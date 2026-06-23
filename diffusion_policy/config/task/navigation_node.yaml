@@ -1,0 +1,28 @@
+name: navigation_node
+
+node_dim: 7
+embedding_dim: 256
+obs_padding: 360
+k_nearest_neighbours: 25
+
+shape_meta: &shape_meta
+  obs:
+    node_resolution: 4.0
+    adjacent_neighbor: 1
+    embedding_dim: ${...embedding_dim}
+  action:
+    shape: [2]
+
+dataset:
+  _target_: diffusion_policy.dataset.navigation_node_dataset.NavigationNodeDataset
+  zarr_path: dataset/navigation_astar_node_train_10000/data.zarr
+  horizon: ${horizon}
+  pad_before: ${eval:'${n_obs_steps}-1'}
+  pad_after: ${eval:'${n_action_steps}-1'}
+  seed: 42
+  # random lattice rotation/reflection per training sequence (8x diversity
+  # from the same demonstrations); validation is never augmented
+  augment: true
+  # 5% held-out episodes: steadier val_loss for checkpoint ranking
+  val_ratio: 0.05
+  max_train_episodes: 10000

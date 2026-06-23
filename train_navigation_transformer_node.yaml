@@ -1,0 +1,137 @@
+defaults:
+  - _self_
+  - task: navigation_node
+
+name: train_diffusion_transformer_navigation_node
+_target_: diffusion_policy.workspace.train_diffusion_transformer_navigation_node_workspace.TrainDiffusionTransformerNavigationNodeWorkspace
+
+task_name: ${task.name}
+shape_meta: ${task.shape_meta}
+exp_name: default
+
+horizon: 8
+n_obs_steps: 2
+n_action_steps: 1
+n_latency_steps: 0
+dataset_obs_steps: ${n_obs_steps}
+past_action_visible: false
+obs_as_cond: true
+
+policy:
+  _target_: diffusion_policy.policy.diffusion_transformer_navigation_node_policy.DiffusionTransformerNavigationNodePolicy
+  shape_meta: ${shape_meta}
+
+  # DDIM permits 10-step inference after 100-step training (~10x faster
+  # closed-loop replanning than the previous 100-step DDPM sampler)
+  noise_scheduler:
+    _target_: diffusers.schedulers.scheduling_ddim.DDIMScheduler
+    num_train_timesteps: 100
+    beta_start: 0.0001
+    beta_end: 0.02
+    beta_schedule: squaredcos_cap_v2
+    clip_sample: true
+    set_alpha_to_one: true
+    steps_offset: 0
+    prediction_type: epsilon
+
+  obs_encoder:
+    _target_: diffusion_policy.model.encoder.navigation_node_encoder.NavigationNodeEncoder
+    node_dim: ${task.node_dim}
+    embedding_dim: ${task.embedding_dim}
+
+  horizon: ${horizon}
+  n_action_steps: ${eval:'${n_action_steps}+${n_latency_steps}'}
+  n_obs_steps: ${n_obs_steps}
+  num_inference_steps: 10
+  # Default closed-loop candidate count. Training/validation sampling passes
+  # num_samples=1 explicitly, so this does not change training cost.
+  num_samples: 8
+  # classifier-free goal guidance: goal features are zeroed for 10% of
+  # training samples; inference blends goal-on/goal-off predictions
+  goal_drop_prob: 0.1
+  goal_guidance_scale: 1.3
+  n_layer: 8
+  n_cond_layers: 0
+  n_head: 4
+  n_emb: 256
+  p_drop_emb: 0.0
+  p_drop_attn: 0.3
+  causal_attn: true
+  time_as_cond: true
+  obs_as_cond: ${obs_as_cond}
+
+ema:
+  _target_: diffusion_policy.model.diffusion.ema_model.EMAModel
+  update_after_step: 0
+  inv_gamma: 1.0
+  power: 0.75
+  min_value: 0.0
+  max_value: 0.9999
+
+dataloader:
+  batch_size: 128
+  num_workers: 4
+  shuffle: true
+  pin_memory: true
+  persistent_workers: false
+
+val_dataloader:
+  batch_size: 128
+  num_workers: 4
+  shuffle: false
+  pin_memory: true
+  persistent_workers: false
+
+optimizer:
+  transformer_weight_decay: 1.0e-3
+  obs_encoder_weight_decay: 1.0e-6
+  learning_rate: 1.0e-4
+  betas: [0.9, 0.95]
+
+training:
+  device: cuda:1
+  device_ids: null
+  seed: 42
+  debug: false
+  resume: true
+  lr_scheduler: cosine
+  lr_warmup_steps: 2000
+  num_epochs: 200
+  gradient_accumulate_every: 1
+  use_ema: true
+  rollout_every: 50
+  checkpoint_every: 10
+  val_every: 1
+  sample_every: 1
+  save_gifs: true
+  gif_every: 1
+  max_train_steps: null
+  max_val_steps: null
+  tqdm_interval_sec: 1.0
+
+logging:
+  project: diffusion_policy_post_icra
+  resume: true
+  mode: online
+  name: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
+  tags: ["${name}", "${task_name}", "${exp_name}"]
+  id: null
+  group: null
+
+checkpoint:
+  topk:
+    monitor_key: val_loss
+    mode: min
+    k: 20
+    format_str: epoch={epoch:04d}-val_loss={val_loss:.3f}.ckpt
+  save_last_ckpt: true
+  save_last_snapshot: false
+
+hydra:
+  job:
+    override_dirname: ${name}
+  run:
+    dir: runs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
+  sweep:
+    dir: runs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
+    subdir: ${hydra.job.num}

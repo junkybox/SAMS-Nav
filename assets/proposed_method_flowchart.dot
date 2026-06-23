@@ -1,0 +1,170 @@
+digraph ProposedMethod {
+    graph [
+        rankdir=TB,
+        bgcolor="white",
+        pad="0.25",
+        nodesep="0.32",
+        ranksep="0.55",
+        fontname="Arial",
+        fontsize=18,
+        labelloc="t",
+        label="Proposed SAMS-Nav Method: Safety-Aware Multi-Sample Waypoint Selection",
+        splines=ortho
+    ];
+
+    node [
+        shape=box,
+        style="rounded,filled",
+        fontname="Arial",
+        fontsize=10,
+        color="#246B86",
+        fillcolor="#EAF4F8",
+        penwidth=1.4,
+        margin="0.14,0.09"
+    ];
+    edge [
+        fontname="Arial",
+        fontsize=9,
+        color="#4F6470",
+        penwidth=1.2,
+        arrowsize=0.72
+    ];
+
+    subgraph cluster_observe {
+        label="1  Observe & Generate";
+        color="#A8C5D2";
+        fontcolor="#174E66";
+        style="rounded";
+
+        observation [
+            label="Partial Belief-Graph Observation\n7-D local node features + goal\n(no hidden/global map)"
+        ];
+        encoder [
+            label="NavigationNodeEncoder\nGraph-conditioned embedding"
+        ];
+        diffusion [
+            label="Diffusion Transformer\nWaypoint policy"
+        ];
+        multisample [
+            label="Vectorized Multi-Sample Inference\nGenerate K waypoint candidates\n(default K = 8)",
+            color="#6842B8",
+            fillcolor="#F0EBFA",
+            penwidth=2.0
+        ];
+
+        observation -> encoder -> diffusion -> multisample;
+        { rank=same; observation; encoder; diffusion; multisample; }
+    }
+
+    subgraph cluster_validate {
+        label="2  Validate Candidates";
+        color="#E5B270";
+        fontcolor="#98520B";
+        style="rounded";
+
+        graph_check [
+            shape=diamond,
+            label="Candidate valid?\nGraph transition +\ncollision safety",
+            color="#D47A12",
+            fillcolor="#FFF4E5"
+        ];
+        reject [
+            label="Reject Candidate\nLog rejection reason",
+            color="#6C7E86",
+            fillcolor="#F1F4F5"
+        ];
+
+        graph_check -> reject [label="no"];
+        { rank=same; graph_check; reject; }
+    }
+
+    subgraph cluster_rank {
+        label="3  Safety-Aware Ranking (Proposed)";
+        color="#9A7AD8";
+        fontcolor="#53349A";
+        style="rounded";
+
+        components [
+            label="Candidate Evaluation\n+ Goal progress     + Connectivity\n+ Node utility       + Guidepost\n+ Safety / clearance\n- Smoothness         - Collision risk",
+            color="#6842B8",
+            fillcolor="#F0EBFA",
+            penwidth=2.0
+        ];
+        weighted [
+            label="Configurable Weighted Score\nS = w_goal G + w_conn C + w_util U\n+ w_guide P + w_safe S\n- w_smooth M - w_collision R",
+            color="#6842B8",
+            fillcolor="#F0EBFA",
+            penwidth=2.0
+        ];
+        mode [
+            label="Experiment / Selection Mode\nA  Single sample     B  Random valid\nC  Goal progress     D  Safety-aware",
+            color="#6842B8",
+            fillcolor="#F0EBFA",
+            penwidth=2.0
+        ];
+
+        components -> weighted -> mode;
+        { rank=same; components; weighted; mode; }
+    }
+
+    subgraph cluster_execute {
+        label="4  Select, Execute & Replan";
+        color="#87B89A";
+        fontcolor="#286642";
+        style="rounded";
+
+        survivor [
+            shape=diamond,
+            label="Any valid\ncandidate?",
+            color="#D47A12",
+            fillcolor="#FFF4E5"
+        ];
+        fallback [
+            label="Goal-Aware Fallback\nSelect safest valid neighbor",
+            color="#2F7D4D",
+            fillcolor="#EAF6EE"
+        ];
+        execute [
+            label="Execute Selected Waypoint",
+            color="#2F7D4D",
+            fillcolor="#EAF6EE",
+            penwidth=1.8
+        ];
+        update [
+            label="Update Robot State\nand Belief Graph",
+            color="#2F7D4D",
+            fillcolor="#EAF6EE"
+        ];
+        done [
+            shape=diamond,
+            label="Goal reached /\ncollision / timeout?",
+            color="#D47A12",
+            fillcolor="#FFF4E5"
+        ];
+        metrics [
+            label="Episode Metrics & Logs\nSuccess, Collision, Timeout, SPL, Path Efficiency\nInvalid/Fallback/Rejection Rate, Smoothness, Score, Time",
+            color="#6C7E86",
+            fillcolor="#F1F4F5"
+        ];
+
+        survivor -> execute [label="yes"];
+        survivor -> fallback [label="no"];
+        fallback -> execute;
+        execute -> update -> done;
+        done -> metrics [label="terminal"];
+        { rank=same; survivor; fallback; execute; }
+        { rank=same; update; done; metrics; }
+    }
+
+    multisample -> graph_check [label="K candidates"];
+    graph_check -> components [label="yes: survivor"];
+    mode -> survivor [label="rank valid set"];
+    reject -> survivor [style=dashed, label="after all K checked"];
+    done -> observation [
+        xlabel="continue: observe and replan",
+        color="#2F7D4D",
+        fontcolor="#286642",
+        penwidth=1.5,
+        constraint=false
+    ];
+}

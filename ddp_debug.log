@@ -1,0 +1,62 @@
+W0612 15:43:19.455000 140499089814144 torch/distributed/run.py:779] 
+W0612 15:43:19.455000 140499089814144 torch/distributed/run.py:779] *****************************************
+W0612 15:43:19.455000 140499089814144 torch/distributed/run.py:779] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0612 15:43:19.455000 140499089814144 torch/distributed/run.py:779] *****************************************
+[2026-06-12 15:43:24,306][diffusion_policy.model.diffusion.transformer_for_diffusion][INFO] - number of parameters: 9.023490e+06
+[2026-06-12 15:43:24,307][diffusion_policy.model.diffusion.transformer_for_diffusion][INFO] - number of parameters: 9.023490e+06
+episode ends 191397
+action shape 191397
+episode ends 191397
+current_edge shape 191397
+episode ends 191397
+current_index shape 191397
+episode ends 191397
+edge_mask shape 191397
+episode ends 191397
+edge_padding_mask shape 191397
+episode ends 191397
+goal shape 191397
+episode ends 191397
+node_inputs shape 191397
+episode ends 191397
+node_padding_mask shape 191397
+episode ends 191397
+pose shape 191397
+episode ends 191397
+action shape 191397
+episode ends 191397
+current_edge shape 191397
+episode ends 191397
+current_index shape 191397
+episode ends 191397
+edge_mask shape 191397
+episode ends 191397
+edge_padding_mask shape 191397
+episode ends 191397
+goal shape 191397
+episode ends 191397
+node_inputs shape 191397
+episode ends 191397
+node_padding_mask shape 191397
+episode ends 191397
+pose shape 191397
+Training dataset size: 484
+Validation dataset size: 52
+Max train steps: None
+Max val steps: None
+Training device: cuda:1 (DDP rank 1/2)
+wandb: WARNING `resume` will be ignored since W&B syncing is set to `offline`. Starting a new run with run id gkpi3ddn.
+wandb: Tracking run with wandb version 0.23.1
+wandb: W&B syncing is set to `offline` in this directory. Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Run data is saved locally in /home2/mjk/diffusion_ws/DPN/runs/2026.06.12/15.43.21_train_diffusion_transformer_navigation_node_navigation_node/wandb/offline-run-20260612_154328-gkpi3ddn
+Training device: cuda:0 (DDP rank 0/2)
+Training epoch 0:   0%|          | 0/484 [00:00<?, ?it/s]Training epoch 0:   0%|          | 1/484 [00:08<1:11:19,  8.86s/it, loss=1.08]                                                                              Validation epoch 0:   0%|          | 0/52 [00:00<?, ?it/s]Validation epoch 0:   2%|▏         | 1/52 [00:03<02:57,  3.48s/it]                                                                  Training epoch 1:   0%|          | 0/484 [00:00<?, ?it/s]Training epoch 1:   0%|          | 1/484 [00:03<31:42,  3.94s/it, loss=1.05]                                                                            Validation epoch 1:   0%|          | 0/52 [00:00<?, ?it/s]Validation epoch 1:   2%|▏         | 1/52 [00:03<02:51,  3.36s/it]                                                                  
+=== Offline Proxy Navigation Metrics (validation batch) ===
+| Collision Rate: 0.3828125
+| Success Rate: 0.0
+| Smoothness Cost: 42.01297378540039
+Note: training values are offline trajectory proxies; closed-loop metrics are reported by test_driver.py.
+[1;34mwandb[0m: 
+[1;34mwandb[0m: You can sync this run to the cloud by running:
+[1;34mwandb[0m: [1mwandb sync /home2/mjk/diffusion_ws/DPN/runs/2026.06.12/15.43.21_train_diffusion_transformer_navigation_node_navigation_node/wandb/offline-run-20260612_154328-gkpi3ddn[0m
+[1;34mwandb[0m: Find logs at: [1;35mruns/2026.06.12/15.43.21_train_diffusion_transformer_navigation_node_navigation_node/wandb/offline-run-20260612_154328-gkpi3ddn/logs[0m

@@ -1,0 +1,176 @@
+digraph SAMSNav {
+    graph [
+        rankdir=TB,
+        bgcolor="white",
+        pad="0.3",
+        nodesep="0.40",
+        ranksep="0.55",
+        fontname="Arial",
+        labelloc="t",
+        label="SAMS-Nav: Safety-Aware Multi-Sample Waypoint Selection for Diffusion Policy Navigation\n(one closed-loop replanning step)"
+    ];
+
+    node [
+        shape=box,
+        style="rounded,filled",
+        fontname="Arial",
+        fontsize=11,
+        color="#1B5E7A",
+        fillcolor="#E6F2F8",
+        margin="0.16,0.10"
+    ];
+
+    edge [
+        fontname="Arial",
+        fontsize=9,
+        color="#455A64",
+        arrowsize=0.75
+    ];
+
+    // ---- legend ----
+    subgraph cluster_legend {
+        label="Legend";
+        color="#B0BEC5";
+        style="rounded";
+        fontsize=10;
+
+        legend_backbone [
+            label="Existing diffusion-policy backbone",
+            fillcolor="#E6F2F8",
+            color="#1B5E7A"
+        ];
+        legend_new [
+            label="Proposed contribution\n(multi-sample + safety-aware ranking)",
+            fillcolor="#EDE7F6",
+            color="#5E35B1"
+        ];
+        legend_check [
+            label="Safety validation / decision",
+            shape=diamond,
+            fillcolor="#FFF4E5",
+            color="#C56A00"
+        ];
+        legend_io [
+            label="Logged output / metrics",
+            fillcolor="#ECEFF1",
+            color="#546E7A"
+        ];
+        legend_backbone -> legend_new -> legend_check -> legend_io [style=invis];
+    }
+
+    // ---- backbone: observation -> encoder -> diffusion ----
+    obs [
+        label="Partial belief-graph observation\nGoal-conditioned 7-D node features\n[rel_x, rel_y, utility, guidepost,\nocc, goal_dx, goal_dy]  (no global map)"
+    ];
+    encoder [
+        label="NavigationNodeEncoder\nGraph attention + goal-node fusion\n-> conditioning embedding"
+    ];
+    diffusion [
+        label="Diffusion Transformer policy\nCFG + DDIM denoising"
+    ];
+
+    // ---- proposed contribution ----
+    multisample [
+        label="Multi-sample inference\npredict_action(num_samples = K, default 8)\nK candidates in ONE vectorized denoising pass\n(repeat_interleave over conditioning)",
+        fillcolor="#EDE7F6",
+        color="#5E35B1"
+    ];
+    candidates [
+        label="K candidate waypoint deltas",
+        fillcolor="#EDE7F6",
+        color="#5E35B1"
+    ];
+
+    // ---- per-candidate validation ----
+    snap [
+        label="Snap each candidate to nearest\ngraph neighbor (within snap radius)"
+    ];
+    graph_check [
+        shape=diamond,
+        label="Graph valid?\nsnap error <= radius",
+        fillcolor="#FFF4E5",
+        color="#C56A00"
+    ];
+    collision_check [
+        shape=diamond,
+        label="Collision-free?\ncheck_collision on belief map",
+        fillcolor="#FFF4E5",
+        color="#C56A00"
+    ];
+    rejected [
+        label="Reject candidate\n(counts toward rejection rate)",
+        fillcolor="#ECEFF1",
+        color="#546E7A"
+    ];
+
+    // ---- ranker ----
+    ranker [
+        label="Safety-Aware Waypoint Ranker (model-free)\nbelief graph + node features + goal only",
+        fillcolor="#EDE7F6",
+        color="#5E35B1"
+    ];
+    scores [
+        label="Per-candidate score components\n+ goal progress   + graph connectivity\n+ node utility     + guidepost\n+ safety (clearance)\n- smoothness penalty   - collision risk",
+        fillcolor="#EDE7F6",
+        color="#5E35B1"
+    ];
+    weighted [
+        label="Weighted ranking score\nS = w_goal*goal + w_conn*conn + w_util*util\n+ w_guide*guide + w_safe*safety\n- w_smooth*smooth - w_coll*collision",
+        fillcolor="#EDE7F6",
+        color="#5E35B1"
+    ];
+    select [
+        label="Selection strategy (experiment mode)\nA: single sample      B: random valid\nC: max goal progress  D: max safety-aware score",
+        fillcolor="#EDE7F6",
+        color="#5E35B1"
+    ];
+
+    survivor_check [
+        shape=diamond,
+        label="Any survivor?",
+        fillcolor="#FFF4E5",
+        color="#C56A00"
+    ];
+    fallback [
+        label="Goal-aware fallback\nvalid neighbor maximizing goal progress,\ntie-broken by intended direction"
+    ];
+
+    // ---- execute / loop / terminate ----
+    execute [
+        label="Execute selected waypoint\nStep NavigationEnv\nUpdate belief graph"
+    ];
+    log [
+        label="Per-step log\n#generated, #rejected, selected score,\nranking breakdown, fallback used, time",
+        fillcolor="#ECEFF1",
+        color="#546E7A"
+    ];
+    done [
+        shape=diamond,
+        label="Goal reached /\ncollision / timeout?",
+        fillcolor="#FFF4E5",
+        color="#C56A00"
+    ];
+    metrics [
+        label="Episode metrics\nSuccess, Collision, Timeout, SPL, Path Eff.,\nInvalid-action, Fallback, Smoothness,\nCandidate rejection, Avg score, Inference time",
+        fillcolor="#ECEFF1",
+        color="#546E7A"
+    ];
+
+    // ---- edges ----
+    obs -> encoder -> diffusion -> multisample -> candidates;
+    candidates -> snap -> graph_check;
+    graph_check -> collision_check [label="valid"];
+    graph_check -> rejected [label="invalid"];
+    collision_check -> ranker [label="free  (survivor)"];
+    collision_check -> rejected [label="collision"];
+
+    ranker -> scores -> weighted -> select -> survivor_check;
+    survivor_check -> execute [label="yes: pick best"];
+    survivor_check -> fallback [label="no"];
+    fallback -> execute;
+
+    execute -> log;
+    execute -> done;
+    done -> obs [label="continue: observe & replan", constraint=false];
+    done -> metrics [label="terminal"];
+}
